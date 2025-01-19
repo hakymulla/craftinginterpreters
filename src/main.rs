@@ -6,6 +6,8 @@ use std::io;
 use std::io::prelude::*;
 
 mod scanner;
+mod token;
+mod generate_ast;
 use scanner::Scanner;
 
 fn run_file(path: &str) -> Result<(), String>{

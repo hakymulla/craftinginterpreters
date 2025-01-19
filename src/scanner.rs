@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use crate::token::{Token};
 
 #[derive(Debug)]
 pub struct Scanner {
@@ -10,16 +11,8 @@ pub struct Scanner {
     keywords: HashMap<String, TokenType>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Token {
-    tokentype: TokenType,
-    lexeme: String,
-    literal: Literals,
-    line: usize, 
-}
-
-#[derive(Debug, Clone)]
-enum Literals {
+#[derive(Debug, Clone, PartialEq)]
+pub enum Literals {
     Identifier(String),
     String(String),
     Number(f64),
@@ -27,7 +20,7 @@ enum Literals {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum TokenType {
+pub enum TokenType {
     // Single-character tokens.
     LeftParen,
     RightParen,
@@ -75,16 +68,6 @@ enum TokenType {
     While,
 
     Eof,
-}
-
-impl Token {
-    pub fn new(tokentype: TokenType, lexeme: String, literal: Literals, line: usize) -> Self {
-        Self { tokentype, lexeme, literal, line }
-    }
-
-    pub fn toString(&self) -> String {
-        format!("{:?} {:?} {:?}", self.tokentype, self.lexeme, self.literal)
-    }
 }
 
 impl Scanner {
