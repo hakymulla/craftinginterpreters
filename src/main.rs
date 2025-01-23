@@ -8,7 +8,9 @@ use std::io::prelude::*;
 mod scanner;
 mod token;
 mod generate_ast;
+mod parser;
 use scanner::Scanner;
+use parser::Parser;
 
 fn run_file(path: &str) -> Result<(), String>{
     let f = fs::read_to_string(path);
@@ -26,9 +28,14 @@ fn run (source: String) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
 
-    for token in tokens {
-        println!("{:?}", token);
-    }
+    let mut parser = Parser::new(tokens);
+    // println!("parser : {:?}", parser);
+
+    // let expr = parser.expression();
+    // println!("Expression: {:?}", expr);
+
+    let parse = parser.parse();
+    println!("Expression: {:?}", parse.to_string());
 }
 
 fn run_prompt() {
@@ -50,6 +57,7 @@ fn run_prompt() {
             },
             Err(err) => panic!("Problem reading the input: {err:?}")
         };
+        println!("input: {:?}", input);
         run(input.to_string());
     }
 

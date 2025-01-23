@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crate::token::{Token};
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Scanner {
@@ -68,6 +69,20 @@ pub enum TokenType {
     While,
 
     Eof,
+}
+
+impl fmt::Display for Literals {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Match on the enum variant and write the desired string representation
+        let description = match self {
+            Literals::Identifier(x) => x.to_string(),
+            Literals::String(x) => x.to_string(),
+            Literals::Number(x) => x.to_string(),
+            Literals::Null => "".to_string()
+            // _ => "".to_string()
+        };
+        write!(f, "{}", description)
+    }
 }
 
 impl Scanner {
