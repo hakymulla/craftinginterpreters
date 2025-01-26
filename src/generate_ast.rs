@@ -1,5 +1,7 @@
 use crate::{token::Token, scanner::*};
-use std::fmt;
+use std::fmt::format;
+use std::{collections::btree_map::Values, fmt};
+use std::ops::Neg;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LiteralsAst {
@@ -8,6 +10,17 @@ pub enum LiteralsAst {
     True,
     False,
     Null
+}
+
+impl Neg for LiteralsAst {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            LiteralsAst::Number(n) => LiteralsAst::Number(-n), // Negate the number
+            _ => panic!("Cannot apply negation to non-numeric literal"), // Panic for invalid cases
+        }
+    }
 }
 
 impl fmt::Display for LiteralsAst {
@@ -33,6 +46,41 @@ pub enum Expr {
     Unary {operator: Token, right: Box<Expr>}
 }
 
+impl LiteralsAst {
+    fn is_truthy(&self) -> bool {
+        match self {
+            LiteralsAst::Number(x) => {
+                if *x == 0 as f64{
+                    true
+                } else {
+                    false
+                }
+            },
+            LiteralsAst::Strings(x) => {
+                if x.len() == 0 {
+                    true
+                } else {
+                    false
+                }
+            },
+            LiteralsAst::True => false,
+            LiteralsAst::False => true,
+            LiteralsAst::Null => true
+        }
+    }
+
+    fn is_equal(a: &LiteralsAst, b: &LiteralsAst) -> bool {   
+        if *a == LiteralsAst::Null && *b == LiteralsAst::Null {
+            return true;
+        }
+        if *a == LiteralsAst::Null {
+            return false;
+        }
+        return a == b;
+
+    }
+}
+
 impl Expr {
     pub fn to_string(&self) -> String {
         match self {
@@ -54,7 +102,117 @@ impl Expr {
     pub fn print(&self) {
         println!("{:?}", self.to_string())
     }
+
+    pub fn evaluate(&self) -> Result<LiteralsAst, String> {
+        match self {
+            Expr::Literal { value } => {
+                Ok(value.clone())
+            },
+            Expr::Grouping { expression } => {
+               expression.evaluate()
+            },
+            Expr::Unary { operator, right } => {
+                let right = right.evaluate()?;
+                match (&operator.tokentype, right) {
+                    (TokenType::Minus, LiteralsAst::Number(x)) => {
+                        return Ok(LiteralsAst::Number(-x));
+                    },
+                    (TokenType::Minus, _) => {
+                        return Err("can't do this operation for".to_string());
+                    },
+                    (TokenType::Bang, x) => {
+                        if x.is_truthy() {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (_, _) => {
+                        return Err("can't do this operation".to_string());
+                    }
+                }
+            },
+            Expr::Binary { left, operator, right } => {
+                let right = right.evaluate()?;
+                let left = left.evaluate()?;
+
+                match (&left, &operator.tokentype, &right) {
+                    (LiteralsAst::Number(left),  TokenType::Minus, LiteralsAst::Number(right)) => {
+                        return Ok(LiteralsAst::Number((*left)  - (*right))) ;
+                    },
+                    (LiteralsAst::Number(left),  TokenType::Plus, LiteralsAst::Number(right)) => {
+                        return Ok(LiteralsAst::Number((*left) as f64 + (*right) as f64));
+                    },
+                    (LiteralsAst::Number(left),  TokenType::Slash, LiteralsAst::Number(right)) => {
+                        return Ok(LiteralsAst::Number((*left) as f64 / (*right) as f64));
+                    },
+                    (LiteralsAst::Number(left),  TokenType::Star, LiteralsAst::Number(right)) => {
+                        return Ok(LiteralsAst::Number((*left) as f64 * (*right) as f64));
+                    },
+                    (LiteralsAst::Number(left),  TokenType::Greater, LiteralsAst::Number(right)) => {
+                        let value = left > right;
+                        if value {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (LiteralsAst::Number(left),  TokenType::GreaterEqual, LiteralsAst::Number(right)) => {
+                        let value = left >= right;
+                        if value {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (LiteralsAst::Number(left),  TokenType::Less, LiteralsAst::Number(right)) => {
+                        let value = left < right;
+                        if value {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (LiteralsAst::Number(left),  TokenType::LessEqual, LiteralsAst::Number(right)) => {
+                        let value = left <= right;
+                        if value {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (LiteralsAst::Strings(left),  TokenType::Plus, LiteralsAst::Strings(right)) => {
+                        return Ok(LiteralsAst::Strings(format!("{}{}", left, right))) ;
+                    },
+                    (left,  TokenType::Equal, right) => {
+                        let value = LiteralsAst::is_equal(left, right);
+                        println!("inside the evalue function {}", value);
+                        if value {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (left,  TokenType::BangEqual, right) => {
+                        let value = !LiteralsAst::is_equal(left, right);
+                        if value {
+                            return Ok(LiteralsAst::True);
+                        } else {
+                            return Ok(LiteralsAst::False);
+                        }
+                    },
+                    (_, _, _) => {
+                        Ok(LiteralsAst::Null)
+                    }
+                }
+
+            }
+        }
+    
+    }
+
 }
+
 
 #[cfg(test)]
 mod tests {

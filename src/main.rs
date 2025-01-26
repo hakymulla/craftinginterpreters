@@ -9,6 +9,7 @@ mod scanner;
 mod token;
 mod generate_ast;
 mod parser;
+// mod interpreter;
 use scanner::Scanner;
 use parser::Parser;
 
@@ -36,6 +37,10 @@ fn run (source: String) {
 
     let parse = parser.parse();
     println!("Expression: {:?}", parse.to_string());
+
+    let eval = parse.evaluate().unwrap();
+    println!("Eval: {:?}", eval);
+
 }
 
 fn run_prompt() {
@@ -44,7 +49,7 @@ fn run_prompt() {
 
     println!("> ");
     loop {
-        // input.clear();
+        input.clear();
         let _ = match stdin.lock().read_line(input) {
             Ok(0) => {
                 println!("\nDetected EOF (Ctrl+D). Exiting...");

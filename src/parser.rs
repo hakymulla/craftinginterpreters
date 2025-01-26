@@ -76,30 +76,6 @@ impl Parser {
         return false;
     }
 
-    // fn match_token(&mut self, typ: TokenType) -> bool {
-    //     if self.is_at_end() {
-    //         false
-    //     } else {
-    //         if self.peek().tokentype == typ {
-    //             self.advance();
-    //             true
-    //         } else {
-    //             false
-    //         }
-    //     }
-    // }
-
-    // fn match_token_type(&mut self, typs: Vec<TokenType>) -> bool {
-    //     for typ in typs {
-    //         if self.match_token(typ) {
-    //             return true;
-    //         }
-    //     }
-
-    //     false
-    // }
-
-
     fn check(&self, token_type: TokenType) -> bool {
         if self.is_at_end() {
             return false;
