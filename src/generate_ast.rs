@@ -70,6 +70,7 @@ impl LiteralsAst {
     }
 
     fn is_equal(a: &LiteralsAst, b: &LiteralsAst) -> bool {   
+        println!("is equal function");
         if *a == LiteralsAst::Null && *b == LiteralsAst::Null {
             return true;
         }
@@ -136,12 +137,29 @@ impl Expr {
                 let right = right.evaluate()?;
                 let left = left.evaluate()?;
 
+                if operator.tokentype == TokenType::Plus {
+                    match (&left, &right) {
+                        (LiteralsAst::Number(left), LiteralsAst::Number(right)) => {
+                            return Ok(LiteralsAst::Number((*left) as f64 + (*right) as f64));
+                        },
+                        (LiteralsAst::Strings(left), LiteralsAst::Strings(right)) => {
+                            return Ok(LiteralsAst::Strings(format!("{}{}", left, right))) ;
+                        },
+                        (LiteralsAst::Strings(_), LiteralsAst::Number(_)) => {
+                            return Err("Operands must be two numbers or two strings.".to_string());
+                        },
+                        (LiteralsAst::Number(_), LiteralsAst::Strings(_)) => {
+                            return Err("Operands must be two numbers or two strings.".to_string());
+                        },
+                        (_, _) => {
+                            return Err("Operands must be two numbers or two strings.".to_string());
+                        }
+                    }
+                }
+
                 match (&left, &operator.tokentype, &right) {
                     (LiteralsAst::Number(left),  TokenType::Minus, LiteralsAst::Number(right)) => {
                         return Ok(LiteralsAst::Number((*left)  - (*right))) ;
-                    },
-                    (LiteralsAst::Number(left),  TokenType::Plus, LiteralsAst::Number(right)) => {
-                        return Ok(LiteralsAst::Number((*left) as f64 + (*right) as f64));
                     },
                     (LiteralsAst::Number(left),  TokenType::Slash, LiteralsAst::Number(right)) => {
                         return Ok(LiteralsAst::Number((*left) as f64 / (*right) as f64));
@@ -181,10 +199,7 @@ impl Expr {
                             return Ok(LiteralsAst::False);
                         }
                     },
-                    (LiteralsAst::Strings(left),  TokenType::Plus, LiteralsAst::Strings(right)) => {
-                        return Ok(LiteralsAst::Strings(format!("{}{}", left, right))) ;
-                    },
-                    (left,  TokenType::Equal, right) => {
+                    (left,  TokenType::EqualEqual, right) => {
                         let value = LiteralsAst::is_equal(left, right);
                         println!("inside the evalue function {}", value);
                         if value {
@@ -217,7 +232,8 @@ impl Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::scanner::{Scanner};
+    use crate::parser::{Parser};
     #[test]
     fn ast_print() {
         let expression = Box::new(Expr::Binary { 
@@ -231,5 +247,132 @@ mod tests {
 
         let expr_result = expression.to_string();
         assert_eq!(expr_result, "(* (- 123) (group 45.67))");
+    }
+
+    #[test]
+    fn test_addition() {
+        let source = "2 + 2;".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+        assert_eq!(eval, LiteralsAst::Number(4.0));
+    }
+
+    #[test]
+    fn test_subtraction() {
+        let source = "42-10;".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+        assert_eq!(eval, LiteralsAst::Number(32.0));
+    }
+
+    #[test]
+    fn test_multiplication() {
+        let source = "4 * 10;".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+        assert_eq!(eval, LiteralsAst::Number(40.0));
+    }
+
+    #[test]
+    fn test_division() {
+        let source = "4 / 2;".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+        assert_eq!(eval, LiteralsAst::Number(2.0));
+    }
+
+    #[test]
+    fn test_concatenation() {
+        let source = "\"Hello\" + \"World\";".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+        let mut parser = Parser::new(tokens);
+
+        let parse = parser.parse();
+
+        let eval = parse.evaluate().unwrap();
+        println!("Eval: {}", eval);
+        assert_eq!(eval, LiteralsAst::Strings("HelloWorld".to_string()));
+    }
+
+    #[test]
+    fn test_equal_equal() {
+        let source = "2 == 2".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+        println!("Eval: {}", eval);
+
+        assert_eq!(eval, LiteralsAst::True);
+    }
+
+    #[test]
+    fn test_bang_equal() {
+        let source = "2 != 3".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+
+        assert_eq!(eval, LiteralsAst::True);
+    }
+
+    #[test]
+    fn test_greater_than() {
+        let source = "2 > 3".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+
+        assert_eq!(eval, LiteralsAst::False);
+    }
+
+    #[test]
+    fn test_lesser_than() {
+        let source = "2 < 3".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
+
+        assert_eq!(eval, LiteralsAst::True);
+    }
+
+    #[test]
+    #[should_panic(expected = "Operands must be two numbers or two strings.")]
+    fn test_addition_fail() {
+        let source = "2 + \"Test\";".to_string();
+        let mut scanner = Scanner::new(source);
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let parse = parser.parse();
+        let eval = parse.evaluate().unwrap();
     }
 }

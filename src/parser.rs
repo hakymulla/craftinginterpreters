@@ -8,10 +8,6 @@ pub struct Parser {
     current: usize
 }
 
-#[derive(Debug)]
-pub struct ParseError;
-
-
 impl Parser { 
     pub fn new(tokens: Vec<Token>) -> Self {
        Self {
