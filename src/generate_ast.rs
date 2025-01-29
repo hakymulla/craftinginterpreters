@@ -43,7 +43,9 @@ pub enum Expr {
     Binary { left: Box<Expr>, operator: Token, right: Box<Expr>},
     Grouping {expression: Box<Expr>},
     Literal {value: LiteralsAst},
-    Unary {operator: Token, right: Box<Expr>}
+    Unary {operator: Token, right: Box<Expr>},
+    Variable {name: Token},
+    Null
 }
 
 impl LiteralsAst {
@@ -96,6 +98,12 @@ impl Expr {
             },
             Expr::Unary { operator, right } => {
                 return format!("({} {})", operator.lexeme, right.to_string());
+            },
+            Expr::Variable { name } => {
+                return format!("{}", name.lexeme);
+            },
+            Expr::Null => {
+                return "".to_string();
             }
         }
     }
@@ -119,7 +127,7 @@ impl Expr {
                         return Ok(LiteralsAst::Number(-x));
                     },
                     (TokenType::Minus, _) => {
-                        return Err("can't do this operation for".to_string());
+                        return Err("Minus Not Implemeted for String".to_string());
                     },
                     (TokenType::Bang, x) => {
                         if x.is_truthy() {
@@ -129,7 +137,7 @@ impl Expr {
                         }
                     },
                     (_, _) => {
-                        return Err("can't do this operation".to_string());
+                        return Err("Not Implemented".to_string());
                     }
                 }
             },
@@ -221,7 +229,13 @@ impl Expr {
                     }
                 }
 
-            }
+            },
+            Expr::Variable { name } => {
+                todo!()
+             },
+            Expr::Null => {
+                Ok(LiteralsAst::Null)
+            },
         }
     
     }
@@ -234,6 +248,7 @@ mod tests {
     use super::*;
     use crate::scanner::{Scanner};
     use crate::parser::{Parser};
+    use crate::interpreter::{Interpreter};
     #[test]
     fn ast_print() {
         let expression = Box::new(Expr::Binary { 
@@ -257,8 +272,10 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-        assert_eq!(eval, LiteralsAst::Number(4.0));
+
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::Number(4.0));
     }
 
     #[test]
@@ -269,8 +286,10 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-        assert_eq!(eval, LiteralsAst::Number(32.0));
+        
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::Number(32.0));
     }
 
     #[test]
@@ -281,8 +300,9 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-        assert_eq!(eval, LiteralsAst::Number(40.0));
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::Number(40.0));
     }
 
     #[test]
@@ -293,8 +313,9 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-        assert_eq!(eval, LiteralsAst::Number(2.0));
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::Number(2.0));
     }
 
     #[test]
@@ -305,10 +326,9 @@ mod tests {
         let mut parser = Parser::new(tokens);
 
         let parse = parser.parse();
-
-        let eval = parse.evaluate().unwrap();
-        println!("Eval: {}", eval);
-        assert_eq!(eval, LiteralsAst::Strings("HelloWorld".to_string()));
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::Strings("HelloWorld".to_string()));
     }
 
     #[test]
@@ -319,10 +339,9 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-        println!("Eval: {}", eval);
-
-        assert_eq!(eval, LiteralsAst::True);
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::True);
     }
 
     #[test]
@@ -333,9 +352,9 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-
-        assert_eq!(eval, LiteralsAst::True);
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::True);
     }
 
     #[test]
@@ -346,9 +365,9 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-
-        assert_eq!(eval, LiteralsAst::False);
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::False);
     }
 
     #[test]
@@ -359,9 +378,9 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
-
-        assert_eq!(eval, LiteralsAst::True);
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
+        assert_eq!(value, LiteralsAst::True);
     }
 
     #[test]
@@ -373,6 +392,7 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let eval = parse.evaluate().unwrap();
+        let interpreter = Interpreter::new();
+        let value = interpreter.interpret(parse);
     }
 }

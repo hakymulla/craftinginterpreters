@@ -9,9 +9,11 @@ mod scanner;
 mod token;
 mod generate_ast;
 mod parser;
-// mod interpreter;
+mod interpreter;
+
 use scanner::Scanner;
 use parser::Parser;
+use interpreter::Interpreter;
 
 fn run_file(path: &str) -> Result<(), String>{
     let f = fs::read_to_string(path);
@@ -30,16 +32,17 @@ fn run (source: String) {
     let tokens = scanner.scan_tokens();
 
     let mut parser = Parser::new(tokens);
-    // println!("parser : {:?}", parser);
+    println!("parser : {:?}", parser);
 
     // let expr = parser.expression();
     // println!("Expression: {:?}", expr);
 
     let parse = parser.parse();
-    println!("Expression: {:?}", parse.to_string());
+    println!("Parse: {:?}", parse);
 
-    let eval = parse.evaluate().unwrap();
-    println!("Eval: {:?}", eval);
+    let interpreter = Interpreter::new();
+    interpreter.interpret(parse);
+    // println!("Eval: {:?}", eval.to_string());
 
 }
 
@@ -62,12 +65,12 @@ fn run_prompt() {
             },
             Err(err) => panic!("Problem reading the input: {err:?}")
         };
-        println!("input: {:?}", input);
+        // println!("input: {:?}", input);
         run(input.to_string());
     }
 
     let input = input.replace("\n", " ");
-    println!("total input : {}", input);
+    // println!("total input : {}", input);
 }
 
 fn main() {
