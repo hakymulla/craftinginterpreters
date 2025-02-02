@@ -10,10 +10,12 @@ mod token;
 mod generate_ast;
 mod parser;
 mod interpreter;
+mod environment;
 
 use scanner::Scanner;
 use parser::Parser;
 use interpreter::Interpreter;
+use environment::Environment;
 
 fn run_file(path: &str) -> Result<(), String>{
     let f = fs::read_to_string(path);
@@ -32,16 +34,17 @@ fn run (source: String) {
     let tokens = scanner.scan_tokens();
 
     let mut parser = Parser::new(tokens);
-    println!("parser : {:?}", parser);
+    println!("parser : {:?}\n", parser);
 
     // let expr = parser.expression();
     // println!("Expression: {:?}", expr);
 
     let parse = parser.parse();
-    println!("Parse: {:?}", parse);
+    println!("Parse: {:?}\n", parse);
 
-    let interpreter = Interpreter::new();
-    interpreter.interpret(parse);
+    let mut environment = Environment::new();
+    let mut interpreter = Interpreter::new(environment);
+    let _ = interpreter.interpret(parse);
     // println!("Eval: {:?}", eval.to_string());
 
 }

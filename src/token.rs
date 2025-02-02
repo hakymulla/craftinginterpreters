@@ -13,7 +13,7 @@ impl Token {
         Self { tokentype, lexeme, literal, line }
     }
 
-    pub fn toString(&self) -> String {
+    pub fn to_string(&self) -> String {
         format!("{:?} {:?} {:?}", self.tokentype, self.lexeme, self.literal)
     }
 }

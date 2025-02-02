@@ -1,3 +1,4 @@
+use crate::environment::{self, Environment};
 use crate::{token::Token, scanner::*};
 use std::fmt::format;
 use std::{collections::btree_map::Values, fmt};
@@ -31,7 +32,7 @@ impl fmt::Display for LiteralsAst {
             LiteralsAst::Strings(x) => x.to_string(),
             LiteralsAst::True => true.to_string(),
             LiteralsAst::False => false.to_string(),
-            _ => "".to_string()
+            LiteralsAst::Null => "nil".to_string()
         };
         write!(f, "{}", description)
     }
@@ -40,6 +41,7 @@ impl fmt::Display for LiteralsAst {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
+    Assign {name: Token, value: Box<Expr>},
     Binary { left: Box<Expr>, operator: Token, right: Box<Expr>},
     Grouping {expression: Box<Expr>},
     Literal {value: LiteralsAst},
@@ -102,6 +104,9 @@ impl Expr {
             Expr::Variable { name } => {
                 return format!("{}", name.lexeme);
             },
+            Expr::Assign { name, value } => {
+                todo!()
+            },
             Expr::Null => {
                 return "".to_string();
             }
@@ -112,16 +117,18 @@ impl Expr {
         println!("{:?}", self.to_string())
     }
 
-    pub fn evaluate(&self) -> Result<LiteralsAst, String> {
+    pub fn evaluate(&mut self, environment: &mut Environment) -> Result<LiteralsAst, String> {
+        println!("environment: {:?}\n", environment);
+
         match self {
             Expr::Literal { value } => {
                 Ok(value.clone())
             },
             Expr::Grouping { expression } => {
-               expression.evaluate()
+               expression.evaluate(environment)
             },
             Expr::Unary { operator, right } => {
-                let right = right.evaluate()?;
+                let right = right.evaluate(environment)?;
                 match (&operator.tokentype, right) {
                     (TokenType::Minus, LiteralsAst::Number(x)) => {
                         return Ok(LiteralsAst::Number(-x));
@@ -142,12 +149,13 @@ impl Expr {
                 }
             },
             Expr::Binary { left, operator, right } => {
-                let right = right.evaluate()?;
-                let left = left.evaluate()?;
+                let right = right.evaluate(environment)?;
+                let left = left.evaluate(environment)?;
 
                 if operator.tokentype == TokenType::Plus {
                     match (&left, &right) {
                         (LiteralsAst::Number(left), LiteralsAst::Number(right)) => {
+                            println!("IN BINARY");
                             return Ok(LiteralsAst::Number((*left) as f64 + (*right) as f64));
                         },
                         (LiteralsAst::Strings(left), LiteralsAst::Strings(right)) => {
@@ -231,7 +239,13 @@ impl Expr {
 
             },
             Expr::Variable { name } => {
-                todo!()
+                println!("Expr::Variable: {:?}", name);
+                Ok(environment.get(name.lexeme.clone())?)
+             },
+             Expr::Assign { name, value } => {
+                let value = value.evaluate(environment)?;
+                environment.assign((*name).clone(), value.clone());
+                return Ok(value);
              },
             Expr::Null => {
                 Ok(LiteralsAst::Null)
@@ -273,7 +287,8 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
 
-        let interpreter = Interpreter::new();
+        let environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::Number(4.0));
     }
@@ -287,7 +302,8 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
         
-        let interpreter = Interpreter::new();
+        let environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::Number(32.0));
     }
@@ -300,7 +316,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::Number(40.0));
     }
@@ -313,7 +330,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::Number(2.0));
     }
@@ -326,7 +344,8 @@ mod tests {
         let mut parser = Parser::new(tokens);
 
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::Strings("HelloWorld".to_string()));
     }
@@ -339,7 +358,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::True);
     }
@@ -352,7 +372,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::True);
     }
@@ -365,7 +386,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::False);
     }
@@ -378,7 +400,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
         assert_eq!(value, LiteralsAst::True);
     }
@@ -392,7 +415,8 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
         let parse = parser.parse();
-        let interpreter = Interpreter::new();
+        let mut environment = Environment::new(); 
+        let mut interpreter = Interpreter::new(environment);
         let value = interpreter.interpret(parse);
     }
 }

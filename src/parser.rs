@@ -1,4 +1,5 @@
 use std::iter::MapWhile;
+use std::os::unix::process::ExitStatusExt;
 
 use crate::scanner::{TokenType};
 use crate::token::Token;
@@ -30,7 +31,7 @@ impl Parser {
 
     pub fn expression(&mut self) -> Expr {
         println!("expression");
-        return self.equality();
+        return self.assignment().unwrap();
     }
 
     fn equality(&mut self) -> Expr {
@@ -289,13 +290,33 @@ impl Parser {
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
         let name = self.consume(TokenType::Identifier, "Expect variable name.".to_string()).unwrap();
-        let mut initializer= Expr::Null ;
+        let mut initializer= Expr::Null;
         if self.match_token_type(vec![TokenType::Equal]).unwrap() {
             initializer = self.expression();
         }
 
         let _ = self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.".to_string());   
         return  Ok(Stmt::Var { name, initializer});
+    }
+
+    pub fn assignment(&mut self) -> Result<Expr, String>{
+        let expr = self.equality();
+
+        if self.match_token_type(vec![TokenType::Equal]).unwrap(){
+            let equal = self.previous();
+            let value = self.assignment()?;
+
+            let name = match expr {
+                Expr::Variable { name } => {
+                    return Ok(Expr::Assign { name: name, value: Box::new(value) });
+                },
+                _ => {
+                    return Err(format!("{:?} Invalid assignment target.", equal));
+                }
+                
+            };
+        }
+        return Ok(expr);
     }
 
 }
