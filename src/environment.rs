@@ -1,46 +1,74 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 use crate::{token::Token};
 use crate::generate_ast::{Expr, LiteralsAst};
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex,};
+use lazy_static::lazy_static;
+use std::cell::RefCell;
+use std::sync::{RwLock};
+use std::borrow::BorrowMut;
 
-pub static GLOBAL_ENV: Lazy<Mutex<Environment>> = Lazy::new(|| Mutex::new(Environment::new()));
 
-
-#[derive(Debug)]
-
+#[derive(Debug, Clone)]
 pub struct Environment {
+    pub enclosing: Option<Rc<Environment>>,
     values: HashMap<String, LiteralsAst>
 }
 
 impl Environment {
     pub fn new() -> Self {
+        println!("New Environment");
         Self {
-            values: HashMap::new()
+            enclosing: None,
+            values: HashMap::new(),
         }
     }
 
     pub fn define(&mut self, name: String, value: LiteralsAst) {
-        print!("define: {:?} {:?} \n", name, value);
-        self.values.insert(name.clone(), value);
+        // print!("define: {:?} {:?} \n", name, value);
+        self.values.insert(name, value);
+        println!("define store");
 
-        print!("get: {:?} \n", self.values);
     }
 
-    pub fn get(&self, name: String) -> Result<LiteralsAst, String> {
+    pub fn get(&self, name: String) -> Option<&LiteralsAst> {
         print!("get: {:?} \n", self.values);
 
-        print!("get: {:?} \n", name);
-        if self.values.contains_key(&name) {
-            return Ok(self.values.get(&name).unwrap().clone());
+        let value = self.values.get(&name);
+
+        match (value, &self.enclosing) {
+            (Some(val), _) => {
+                Some(val)
+            },
+            (None, Some(env)) => {
+                env.get(name)
+            },
+            (None, None) => {
+                None
+            }
         }
-        return Err(format!("Undefined variable '{}'.", name));
     }
 
     pub fn assign(&mut self, name: Token, value: LiteralsAst) {
-        if self.values.contains_key(&name.lexeme) {
-            self.values.insert(name.lexeme.clone(), value);
-        }
+        let name_lex = self.values.get(&name.lexeme);
 
-    }
+        match (name_lex, &self.enclosing) {
+            (Some(_), _) => {
+                println!("assign store 1");
+                self.values.insert(name.lexeme.clone(), value);
+            },
+            (None, Some(env)) => {
+                println!("assign store 2");
+                Rc::get_mut(&mut env.clone()).expect("Cannot get mut env").define(name.to_string(), value);
+
+            },
+            (None, None) => {
+                println!("assign store None");
+
+                false;
+            }
+        }
+    }  
+
 }

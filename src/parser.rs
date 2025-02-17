@@ -18,7 +18,8 @@ pub struct Parser {
 pub enum Stmt {
     Expression {expression: Expr},
     Print {expression: Expr},
-    Var {name: Token, initializer: Expr}
+    Var {name: Token, initializer: Expr},
+    Block {statements: Vec<Stmt>}
 }
 
 impl Parser { 
@@ -30,7 +31,6 @@ impl Parser {
     }
 
     pub fn expression(&mut self) -> Expr {
-        println!("expression");
         return self.assignment().unwrap();
     }
 
@@ -237,7 +237,7 @@ impl Parser {
                 TokenType::Fun | TokenType::Class | TokenType::Var | 
                 TokenType::For | TokenType::If | TokenType::While | 
                 TokenType::Print | TokenType::Return => return,
-                _ => todo!()
+                _ => ()
             }
         }
         let _ = self.advance();
@@ -253,7 +253,11 @@ impl Parser {
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         if self.match_token_type(vec![TokenType::Print]).unwrap() {
+            println!("Token in statemnt parser.rs");
             return Ok(self.print_statement());
+        }
+        if self.match_token_type(vec![TokenType::LeftBrace]).unwrap() {
+            return Ok(Stmt::Block { statements: self.block() });
         }
         return Ok(self.expression_statement());
     }
@@ -261,6 +265,7 @@ impl Parser {
     fn print_statement(&mut self) -> Stmt {
         let value: Expr = self.expression();
         let _ = self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string());
+        println!("Token in print_statement parser.rs");
         return Stmt::Print { expression: value };
     }
 
@@ -317,6 +322,16 @@ impl Parser {
             };
         }
         return Ok(expr);
+    }
+
+    fn block(&mut self) -> Vec<Stmt> {
+        let mut statements  = Vec::new();
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration().unwrap());
+        }
+
+        let _ = self.consume(TokenType::RightBrace, "Expect '}' after block.".to_string());
+        return statements;
     }
 
 }

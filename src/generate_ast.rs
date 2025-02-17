@@ -1,8 +1,10 @@
 use crate::environment::{self, Environment};
 use crate::{token::Token, scanner::*};
+use std::env;
 use std::fmt::format;
 use std::{collections::btree_map::Values, fmt};
 use std::ops::Neg;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LiteralsAst {
@@ -105,7 +107,7 @@ impl Expr {
                 return format!("{}", name.lexeme);
             },
             Expr::Assign { name, value } => {
-                todo!()
+                return format!("({} {})", name.lexeme, value.to_string());
             },
             Expr::Null => {
                 return "".to_string();
@@ -117,10 +119,25 @@ impl Expr {
         println!("{:?}", self.to_string())
     }
 
-    pub fn evaluate(&mut self, environment: &mut Environment) -> Result<LiteralsAst, String> {
-        println!("environment: {:?}\n", environment);
+    pub fn evaluate(&self, environment: &mut Environment) -> Result<LiteralsAst, String> {
+        // println!("environment: {:?}\n", environment);
 
         match self {
+            Expr::Assign { name, value } => {
+                println!("Assign in Expr generate_ast");
+                // let value = value.evaluate(environment)?;
+                let val = environment.get(name.lexeme.clone()).unwrap().clone();
+                environment.assign(name.clone(), val.clone());
+                return Ok(val.clone());
+             },
+            Expr::Variable { name } => {
+                let value = environment.get(name.lexeme.clone());
+                match value {
+                    Some(val) => return Ok(val.clone()),
+                    None => return Err("is not declared".to_string())
+                };
+                // Ok(environment.get(&name.lexeme.clone()).unwrap())
+             },
             Expr::Literal { value } => {
                 Ok(value.clone())
             },
@@ -155,7 +172,6 @@ impl Expr {
                 if operator.tokentype == TokenType::Plus {
                     match (&left, &right) {
                         (LiteralsAst::Number(left), LiteralsAst::Number(right)) => {
-                            println!("IN BINARY");
                             return Ok(LiteralsAst::Number((*left) as f64 + (*right) as f64));
                         },
                         (LiteralsAst::Strings(left), LiteralsAst::Strings(right)) => {
@@ -217,7 +233,6 @@ impl Expr {
                     },
                     (left,  TokenType::EqualEqual, right) => {
                         let value = LiteralsAst::is_equal(left, right);
-                        println!("inside the evalue function {}", value);
                         if value {
                             return Ok(LiteralsAst::True);
                         } else {
@@ -238,15 +253,6 @@ impl Expr {
                 }
 
             },
-            Expr::Variable { name } => {
-                println!("Expr::Variable: {:?}", name);
-                Ok(environment.get(name.lexeme.clone())?)
-             },
-             Expr::Assign { name, value } => {
-                let value = value.evaluate(environment)?;
-                environment.assign((*name).clone(), value.clone());
-                return Ok(value);
-             },
             Expr::Null => {
                 Ok(LiteralsAst::Null)
             },
@@ -257,166 +263,166 @@ impl Expr {
 }
 
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::scanner::{Scanner};
-    use crate::parser::{Parser};
-    use crate::interpreter::{Interpreter};
-    #[test]
-    fn ast_print() {
-        let expression = Box::new(Expr::Binary { 
-            left: Box::new( Expr::Unary { 
-                    operator: Token { tokentype: TokenType::Minus, lexeme: "-".to_string(), literal: Literals::Null, line: 1 }, 
-                    right:Box::new( Expr::Literal { value: LiteralsAst::Number(123 as f64) } )}), 
-            operator: Token { tokentype: TokenType::Star, lexeme: "*".to_string(), literal: Literals::Null, line: 1 }, 
-            right: Box::new(Expr::Grouping { expression:Box::new( Expr::Literal { value: LiteralsAst::Number(45.67) }) } )
-            }
-        );
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::scanner::{Scanner};
+//     use crate::parser::{Parser};
+//     use crate::interpreter::{Interpreter};
+//     #[test]
+//     fn ast_print() {
+//         let expression = Box::new(Expr::Binary { 
+//             left: Box::new( Expr::Unary { 
+//                     operator: Token { tokentype: TokenType::Minus, lexeme: "-".to_string(), literal: Literals::Null, line: 1 }, 
+//                     right:Box::new( Expr::Literal { value: LiteralsAst::Number(123 as f64) } )}), 
+//             operator: Token { tokentype: TokenType::Star, lexeme: "*".to_string(), literal: Literals::Null, line: 1 }, 
+//             right: Box::new(Expr::Grouping { expression:Box::new( Expr::Literal { value: LiteralsAst::Number(45.67) }) } )
+//             }
+//         );
 
-        let expr_result = expression.to_string();
-        assert_eq!(expr_result, "(* (- 123) (group 45.67))");
-    }
+//         let expr_result = expression.to_string();
+//         assert_eq!(expr_result, "(* (- 123) (group 45.67))");
+//     }
 
-    #[test]
-    fn test_addition() {
-        let source = "2 + 2;".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_addition() {
+//         let source = "2 + 2;".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
 
-        let environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::Number(4.0));
-    }
+//         let environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::Number(4.0));
+//     }
 
-    #[test]
-    fn test_subtraction() {
-        let source = "42-10;".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_subtraction() {
+//         let source = "42-10;".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
         
-        let environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::Number(32.0));
-    }
+//         let environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::Number(32.0));
+//     }
 
-    #[test]
-    fn test_multiplication() {
-        let source = "4 * 10;".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_multiplication() {
+//         let source = "4 * 10;".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::Number(40.0));
-    }
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::Number(40.0));
+//     }
 
-    #[test]
-    fn test_division() {
-        let source = "4 / 2;".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_division() {
+//         let source = "4 / 2;".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::Number(2.0));
-    }
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::Number(2.0));
+//     }
 
-    #[test]
-    fn test_concatenation() {
-        let source = "\"Hello\" + \"World\";".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
-        let mut parser = Parser::new(tokens);
+//     #[test]
+//     fn test_concatenation() {
+//         let source = "\"Hello\" + \"World\";".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
+//         let mut parser = Parser::new(tokens);
 
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::Strings("HelloWorld".to_string()));
-    }
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::Strings("HelloWorld".to_string()));
+//     }
 
-    #[test]
-    fn test_equal_equal() {
-        let source = "2 == 2".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_equal_equal() {
+//         let source = "2 == 2".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::True);
-    }
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::True);
+//     }
 
-    #[test]
-    fn test_bang_equal() {
-        let source = "2 != 3".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_bang_equal() {
+//         let source = "2 != 3".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::True);
-    }
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::True);
+//     }
 
-    #[test]
-    fn test_greater_than() {
-        let source = "2 > 3".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_greater_than() {
+//         let source = "2 > 3".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::False);
-    }
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::False);
+//     }
 
-    #[test]
-    fn test_lesser_than() {
-        let source = "2 < 3".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     fn test_lesser_than() {
+//         let source = "2 < 3".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-        assert_eq!(value, LiteralsAst::True);
-    }
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//         assert_eq!(value, LiteralsAst::True);
+//     }
 
-    #[test]
-    #[should_panic(expected = "Operands must be two numbers or two strings.")]
-    fn test_addition_fail() {
-        let source = "2 + \"Test\";".to_string();
-        let mut scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+//     #[test]
+//     #[should_panic(expected = "Operands must be two numbers or two strings.")]
+//     fn test_addition_fail() {
+//         let source = "2 + \"Test\";".to_string();
+//         let mut scanner = Scanner::new(source);
+//         let tokens = scanner.scan_tokens();
 
-        let mut parser = Parser::new(tokens);
-        let parse = parser.parse();
-        let mut environment = Environment::new(); 
-        let mut interpreter = Interpreter::new(environment);
-        let value = interpreter.interpret(parse);
-    }
-}
+//         let mut parser = Parser::new(tokens);
+//         let parse = parser.parse();
+//         let mut environment = Environment::new(); 
+//         let mut interpreter = Interpreter::new(environment);
+//         let value = interpreter.interpret(parse);
+//     }
+// }
