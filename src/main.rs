@@ -78,7 +78,7 @@ fn run_prompt() {
         run(input.to_string(), &mut interpreter);
     }
 
-    println!("INput in run pormpmt");
+    println!("Input in run prompt");
 
     let input = input.replace("\n", " ");
     println!("total input : {}", input);
@@ -98,3 +98,7 @@ fn main() {
 }
 
 // {var b=20; print b;}
+
+// if (2 == 2) { print "Double IF";}
+// if (2 == 2) { var c =12; print c;}
+// if (2 == 3) { print "Double IF";}

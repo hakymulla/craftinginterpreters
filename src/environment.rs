@@ -28,7 +28,7 @@ impl Environment {
     pub fn define(&mut self, name: String, value: LiteralsAst) {
         // print!("define: {:?} {:?} \n", name, value);
         self.values.insert(name, value);
-        println!("define store");
+        // println!("define store");
 
     }
 
@@ -55,16 +55,16 @@ impl Environment {
 
         match (name_lex, &self.enclosing) {
             (Some(_), _) => {
-                println!("assign store 1");
+                // println!("assign store 1");
                 self.values.insert(name.lexeme.clone(), value);
             },
             (None, Some(env)) => {
-                println!("assign store 2");
+                // println!("assign store 2");
                 Rc::get_mut(&mut env.clone()).expect("Cannot get mut env").define(name.to_string(), value);
 
             },
             (None, None) => {
-                println!("assign store None");
+                // println!("assign store None");
 
                 false;
             }
